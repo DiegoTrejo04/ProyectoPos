@@ -699,7 +699,7 @@ public class AbarrotesPos {
 
             btnGuardar.addActionListener(e -> {
                 try {
-                    if (txtCod.getText().isEmpty() || txtNom.getText().isEmpty()) { JOptionPane.showMessageDialog(this, "Codigo y Nombre son obligatorios."); return; }
+                    if (txtCod.getText().isEmpty() || txtNom.getText().isEmpty()) { JOptionPane.showMessageDialog(this, "Código y Nombre son obligatorios."); return; }
                     double costo = Double.parseDouble(txtCosto.getText());
                     double precio = Double.parseDouble(txtPrecio.getText());
                     int stock = Integer.parseInt(txtStock.getText());
@@ -1093,7 +1093,7 @@ public class AbarrotesPos {
             int r = table.getSelectedRow();
             if (r == -1) { JOptionPane.showMessageDialog(this, "Seleccione un producto para eliminar."); return; }
             Producto p = listaActual.get(r);
-            if (JOptionPane.showConfirmDialog(this, "Está seguro de eliminar el producto?: " + p.nombre + "?\n\n(Se desactivará para no afectar el historial de ventas)", "Confirmar Eliminación", JOptionPane.YES_NO_OPTION) == 0) {
+            if (JOptionPane.showConfirmDialog(this, "¿Está seguro de eliminar el producto: " + p.nombre + "?\n\n(Se desactivará para no afectar el historial de ventas)", "Confirmar Eliminación", JOptionPane.YES_NO_OPTION) == 0) {
                 new SwingWorker<Void, Void>() {
                     Exception error;
                     protected Void doInBackground() { try { dao.eliminarProducto(p.id); } catch (Exception e) { error = e; } return null; }

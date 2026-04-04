@@ -1,0 +1,19 @@
+# Maven build output
+/target/
+
+# IntelliJ
+/.idea/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# SQLite database (runtime data)
+/data/*.db
+/data/*.db-wal
+/data/*.db-shm
+
+# Generated files
+/Tickets/
+/Cortes/*.pdf

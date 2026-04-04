@@ -51,11 +51,15 @@ src/main/resources/app.properties
 Clave disponible:
 - `db.url` – URL JDBC de SQLite (por defecto: `jdbc:sqlite:data/posabarrotes.db`)
 
-## Módulo de Caja
+## Módulo de Caja Global
 
-- Al iniciar sesión como **CAJERO**, si no hay caja abierta para hoy, se solicita el monto inicial.
-- El botón **"Corte Caja"** cierra la caja activa, solicita el efectivo contado y genera un PDF de corte.
-- Los PDFs de cortes se guardan en la carpeta `Cortes/`.
+- Solo puede existir **una caja ABIERTA** a la vez en el sistema.
+- Solo el rol **ADMIN** puede abrir o cerrar la caja.
+- Al iniciar sesión como **ADMIN**, si no hay caja abierta, se ofrece la opción de abrirla con un monto inicial.
+- Al iniciar sesión como **CAJERO**, si no hay caja abierta, se muestra un aviso informativo; el cobro queda bloqueado hasta que el administrador abra la caja.
+- El botón **"Abrir Caja"** en el menú lateral (solo ADMIN) abre la caja global solicitando el monto inicial.
+- El botón **"Cerrar Caja (Corte Z)"** en el menú lateral (solo ADMIN) cierra la caja activa, solicita el efectivo contado, calcula la diferencia y genera un PDF de corte en `Cortes/`.
+- Las ventas registradas durante la caja abierta quedan auditadas por el usuario que las realizó.
 
 ## Carpetas generadas en tiempo de ejecución
 

@@ -605,7 +605,7 @@ public class AbarrotesPos {
                             Caja cajaAbierta = cajaDAO.obtenerCajaAbierta(u.username);
                             if (cajaAbierta == null) {
                                 String montoStr = JOptionPane.showInputDialog(null,
-                                    "No hay caja abierta para hoy.\nCual es el monto inicial en caja?\n(Efectivo de inicio de turno)",
+                                    "No hay caja abierta para hoy.\nCuál es el monto inicial en caja?\n(Efectivo de inicio de turno)",
                                     "Apertura de Caja", JOptionPane.QUESTION_MESSAGE);
                                 if (montoStr != null && !montoStr.trim().isEmpty()) {
                                     try {
@@ -614,7 +614,7 @@ public class AbarrotesPos {
                                         AbarrotesPos.cajaActual = cajaAbierta;
                                         JOptionPane.showMessageDialog(null, "Caja abierta con $" + String.format("%.2f", monto), "Caja Abierta", JOptionPane.INFORMATION_MESSAGE);
                                     } catch (NumberFormatException ex) {
-                                        JOptionPane.showMessageDialog(null, "Monto invalido. Se abrira caja con $0.00");
+                                        JOptionPane.showMessageDialog(null, "Monto inválido. Se abrirá caja con $0.00");
                                         cajaAbierta = cajaDAO.abrirCaja(u.username, 0.0);
                                         AbarrotesPos.cajaActual = cajaAbierta;
                                     }
@@ -683,9 +683,9 @@ public class AbarrotesPos {
             JTextField txtStock = new JTextField(p != null ? String.valueOf(p.stock) : "");
             JTextField txtStockMin = new JTextField(p != null ? String.valueOf(p.stockMinimo) : "");
 
-            add(new JLabel("Codigo Barras:")); add(txtCod);
+            add(new JLabel("Código Barras:")); add(txtCod);
             add(new JLabel("Nombre:")); add(txtNom);
-            add(new JLabel("Categoria:")); add(cbCat);
+            add(new JLabel("Categoría:")); add(cbCat);
             add(new JLabel("Costo ($):")); add(txtCosto);
             add(new JLabel("Precio Venta ($):")); add(txtPrecio);
             add(new JLabel("Stock Inicial:")); add(txtStock);
@@ -709,7 +709,7 @@ public class AbarrotesPos {
                     dao.guardarProducto(nuevo, p == null);
                     guardado = true; dispose();
                 } catch (NumberFormatException ex) {
-                    JOptionPane.showMessageDialog(this, "Asegurese de ingresar numeros validos en Costo, Precio y Stock.", "Error", JOptionPane.ERROR_MESSAGE);
+                    JOptionPane.showMessageDialog(this, "Asegúrese de ingresar números válidos en Costo, Precio y Stock.", "Error", JOptionPane.ERROR_MESSAGE);
                 } catch (SQLException ex) {
                     JOptionPane.showMessageDialog(this, "Error de Base de Datos: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
                 }
@@ -782,7 +782,7 @@ public class AbarrotesPos {
             kpiPanel.setPreferredSize(new Dimension(0, 120)); kpiPanel.setMaximumSize(new Dimension(2000, 120));
             centerPanel.add(kpiPanel); centerPanel.add(Box.createRigidArea(new Dimension(0, 30)));
             centerPanel.add(new JLabel("Alertas de Stock"));
-            modelAlertas = new DefaultTableModel(new String[]{"ID", "Producto", "Categoria", "Stock", "Minimo"}, 0) {
+            modelAlertas = new DefaultTableModel(new String[]{"ID", "Producto", "Categoría", "Stock", "Mínimo"}, 0) {
                 @Override public boolean isCellEditable(int r, int c) { return false; }
             };
             tableAlertas = new JTable(modelAlertas); tableAlertas.setRowHeight(30);
@@ -860,7 +860,7 @@ public class AbarrotesPos {
             topPanel.add(Box.createRigidArea(new Dimension(15, 0))); topPanel.add(btnBuscar);
             add(topPanel, BorderLayout.NORTH);
 
-            modelTicket = new DefaultTableModel(new String[]{"Codigo", "Producto", "Precio", "Cant.", "Subtotal"}, 0) {
+            modelTicket = new DefaultTableModel(new String[]{"Código", "Producto", "Precio", "Cant.", "Subtotal"}, 0) {
                 @Override public boolean isCellEditable(int r, int c) { return false; }
             };
             table = new JTable(modelTicket); table.setRowHeight(30);
@@ -914,7 +914,7 @@ public class AbarrotesPos {
             String codigo = txtCodigo.getText().trim(); if (codigo.isEmpty()) return;
             int cantSolicitada;
             try { cantSolicitada = Integer.parseInt(txtCantidad.getText().trim()); if (cantSolicitada <= 0) throw new Exception(); }
-            catch (Exception ex) { JOptionPane.showMessageDialog(this, "Cantidad inicial invalida"); return; }
+            catch (Exception ex) { JOptionPane.showMessageDialog(this, "Cantidad inicial inválida"); return; }
             final int cFinal = cantSolicitada;
             new SwingWorker<Producto, Void>() {
                 protected Producto doInBackground() throws Exception { return productoDAO.buscarPorCodigo(codigo); }
@@ -947,7 +947,7 @@ public class AbarrotesPos {
                     int c = Integer.parseInt(in);
                     if (c > 0 && c <= d.producto.stock) { d.setCantidad(c); actualizarTabla(); }
                     else JOptionPane.showMessageDialog(this, "Stock insuficiente");
-                } catch (Exception e) { JOptionPane.showMessageDialog(this, "Numero invalido"); }
+                } catch (Exception e) { JOptionPane.showMessageDialog(this, "Número inválido"); }
             }
         }
 
@@ -1004,7 +1004,7 @@ public class AbarrotesPos {
                     if (efectivoStr == null) return;
                     double efectivo;
                     try { efectivo = Double.parseDouble(efectivoStr.trim()); }
-                    catch (NumberFormatException ex) { JOptionPane.showMessageDialog(this, "Monto invalido."); return; }
+                    catch (NumberFormatException ex) { JOptionPane.showMessageDialog(this, "Monto inválido."); return; }
 
                     CajaDAO cajaDAO = new CajaDAO();
                     double totalVentas = cajaDAO.calcularTotalVentasCaja(AbarrotesPos.cajaActual);
@@ -1049,7 +1049,7 @@ public class AbarrotesPos {
             top.add(btnNuevo); top.add(btnEditar); top.add(btnEliminar); top.add(btnRecargar);
             add(top, BorderLayout.NORTH);
 
-            model = new DefaultTableModel(new String[]{"ID","Codigo","Producto","Categoria","Precio","Stock"}, 0) {
+            model = new DefaultTableModel(new String[]{"ID","Código","Producto","Categoría","Precio","Stock"}, 0) {
                 @Override public boolean isCellEditable(int r, int c) { return false; }
             };
             table = new JTable(model); table.setRowHeight(30); table.setFont(Config.FONT_MAIN);
@@ -1074,11 +1074,11 @@ public class AbarrotesPos {
                 protected void done() {
                     try {
                         List<Categoria> cats = get();
-                        if (cats.isEmpty()) { JOptionPane.showMessageDialog(InventoryPanel.this, "Debe existir al menos 1 categoria en la BD."); return; }
+                        if (cats.isEmpty()) { JOptionPane.showMessageDialog(InventoryPanel.this, "Debe existir al menos 1 categoría en la BD."); return; }
                         ProductoDialog dlg = new ProductoDialog(SwingUtilities.getWindowAncestor(InventoryPanel.this), p, cats, dao);
                         dlg.setVisible(true);
                         if (dlg.guardado) cargar();
-                    } catch (Exception e) { JOptionPane.showMessageDialog(InventoryPanel.this, "Error al cargar categorias: " + e.getMessage()); }
+                    } catch (Exception e) { JOptionPane.showMessageDialog(InventoryPanel.this, "Error al cargar categorías: " + e.getMessage()); }
                 }
             }.execute();
         }
@@ -1093,7 +1093,7 @@ public class AbarrotesPos {
             int r = table.getSelectedRow();
             if (r == -1) { JOptionPane.showMessageDialog(this, "Seleccione un producto para eliminar."); return; }
             Producto p = listaActual.get(r);
-            if (JOptionPane.showConfirmDialog(this, "Esta seguro de eliminar el producto: " + p.nombre + "?\n\n(Se desactivara para no afectar el historial de ventas)", "Confirmar Eliminacion", JOptionPane.YES_NO_OPTION) == 0) {
+            if (JOptionPane.showConfirmDialog(this, "Está seguro de eliminar el producto?: " + p.nombre + "?\n\n(Se desactivará para no afectar el historial de ventas)", "Confirmar Eliminación", JOptionPane.YES_NO_OPTION) == 0) {
                 new SwingWorker<Void, Void>() {
                     Exception error;
                     protected Void doInBackground() { try { dao.eliminarProducto(p.id); } catch (Exception e) { error = e; } return null; }

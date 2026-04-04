@@ -165,10 +165,11 @@ public class AbarrotesPos {
 
                 stmt.execute("CREATE TABLE IF NOT EXISTS Cajas (" +
                     "Id INTEGER PRIMARY KEY AUTOINCREMENT," +
-                    "Usuario TEXT NOT NULL," +
+                    "UsuarioAdminApertura TEXT NOT NULL," +
                     "FechaApertura TEXT NOT NULL DEFAULT (datetime('now','localtime'))," +
                     "MontoInicial REAL NOT NULL DEFAULT 0," +
                     "FechaCierre TEXT," +
+                    "UsuarioAdminCierre TEXT," +
                     "MontoFinalEfectivo REAL," +
                     "TotalVentasCalculado REAL," +
                     "Diferencia REAL," +
@@ -260,16 +261,18 @@ public class AbarrotesPos {
         }
 
         public static void generarCorteCajaPDF(Caja caja) {
-            String nombreArchivo = "Cortes/Corte_" + caja.usuario + "_" + LocalDate.now() + ".pdf";
+            String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
+            String nombreArchivo = "Cortes/CorteZ_" + timestamp + ".pdf";
             crearDirectorio("Cortes");
             try {
                 PdfWriter writer = new PdfWriter(nombreArchivo);
                 PdfDocument pdf = new PdfDocument(writer);
                 Document document = new Document(pdf);
-                document.add(new Paragraph("CORTE DE CAJA").setTextAlignment(TextAlignment.CENTER).setBold().setFontSize(20));
-                document.add(new Paragraph("Cajero: " + caja.usuario).setTextAlignment(TextAlignment.CENTER));
+                document.add(new Paragraph("CORTE DE CAJA GLOBAL (Z)").setTextAlignment(TextAlignment.CENTER).setBold().setFontSize(20));
                 document.add(new Paragraph("Apertura: " + caja.fechaApertura).setTextAlignment(TextAlignment.CENTER));
                 document.add(new Paragraph("Cierre: " + (caja.fechaCierre != null ? caja.fechaCierre : "N/A")).setTextAlignment(TextAlignment.CENTER));
+                document.add(new Paragraph("Admin Apertura: " + caja.usuarioAdminApertura).setTextAlignment(TextAlignment.CENTER));
+                document.add(new Paragraph("Admin Cierre: " + (caja.usuarioAdminCierre != null ? caja.usuarioAdminCierre : "N/A")).setTextAlignment(TextAlignment.CENTER));
                 document.add(new Paragraph("\n"));
                 document.add(new Paragraph("Monto Inicial: $" + String.format("%.2f", caja.montoInicial)));
                 document.add(new Paragraph("Ventas del Turno: $" + String.format("%.2f", caja.totalVentasCalculado != null ? caja.totalVentasCalculado : 0.0)));
@@ -277,7 +280,7 @@ public class AbarrotesPos {
                 document.add(new Paragraph("Diferencia: $" + String.format("%.2f", caja.diferencia != null ? caja.diferencia : 0.0)).setBold());
                 document.add(new Paragraph("\n\n"));
                 document.add(new Paragraph("__________________________").setTextAlignment(TextAlignment.CENTER));
-                document.add(new Paragraph("Firma del Cajero: " + caja.usuario).setTextAlignment(TextAlignment.CENTER));
+                document.add(new Paragraph("Admin: " + (caja.usuarioAdminCierre != null ? caja.usuarioAdminCierre : "")).setTextAlignment(TextAlignment.CENTER));
                 document.close();
                 if (Desktop.isDesktopSupported()) Desktop.getDesktop().open(new File(nombreArchivo));
             } catch (Exception e) { e.printStackTrace(); }
@@ -305,20 +308,22 @@ public class AbarrotesPos {
 
     static class Caja {
         int id;
-        String usuario;
+        String usuarioAdminApertura;
         String fechaApertura;
         double montoInicial;
         String fechaCierre;
+        String usuarioAdminCierre;
         Double montoFinalEfectivo;
         Double totalVentasCalculado;
         Double diferencia;
         String estado;
 
-        public Caja(int id, String usuario, String fechaApertura, double montoInicial,
-                    String fechaCierre, Double montoFinalEfectivo, Double totalVentasCalculado,
-                    Double diferencia, String estado) {
-            this.id = id; this.usuario = usuario; this.fechaApertura = fechaApertura;
-            this.montoInicial = montoInicial; this.fechaCierre = fechaCierre;
+        public Caja(int id, String usuarioAdminApertura, String fechaApertura, double montoInicial,
+                    String fechaCierre, String usuarioAdminCierre, Double montoFinalEfectivo,
+                    Double totalVentasCalculado, Double diferencia, String estado) {
+            this.id = id; this.usuarioAdminApertura = usuarioAdminApertura;
+            this.fechaApertura = fechaApertura; this.montoInicial = montoInicial;
+            this.fechaCierre = fechaCierre; this.usuarioAdminCierre = usuarioAdminCierre;
             this.montoFinalEfectivo = montoFinalEfectivo;
             this.totalVentasCalculado = totalVentasCalculado;
             this.diferencia = diferencia; this.estado = estado;
@@ -365,23 +370,24 @@ public class AbarrotesPos {
     }
 
     static class CajaDAO {
-        public Caja obtenerCajaAbierta(String usuario) throws SQLException {
-            String sql = "SELECT * FROM Cajas WHERE Usuario = ? AND Estado = 'ABIERTA' AND date(FechaApertura) = date('now','localtime') ORDER BY Id DESC LIMIT 1";
+        public Caja obtenerCajaAbiertaGlobal() throws SQLException {
+            String sql = "SELECT * FROM Cajas WHERE Estado = 'ABIERTA' ORDER BY Id DESC LIMIT 1";
             try (Connection conn = ConexionDB.getInstance().getConnection();
-                 PreparedStatement ps = conn.prepareStatement(sql)) {
-                ps.setString(1, usuario);
-                try (ResultSet rs = ps.executeQuery()) {
-                    if (rs.next()) return mapCaja(rs);
-                }
+                 PreparedStatement ps = conn.prepareStatement(sql);
+                 ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) return mapCaja(rs);
             }
             return null;
         }
 
-        public Caja abrirCaja(String usuario, double montoInicial) throws SQLException {
-            String sql = "INSERT INTO Cajas (Usuario, MontoInicial, Estado) VALUES (?, ?, 'ABIERTA')";
+        public Caja abrirCaja(String adminUsername, double montoInicial) throws SQLException {
+            if (obtenerCajaAbiertaGlobal() != null) {
+                throw new SQLException("Ya existe una caja abierta. Ciérrela primero.");
+            }
+            String sql = "INSERT INTO Cajas (UsuarioAdminApertura, MontoInicial, Estado) VALUES (?, ?, 'ABIERTA')";
             try (Connection conn = ConexionDB.getInstance().getConnection();
                  PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
-                ps.setString(1, usuario);
+                ps.setString(1, adminUsername);
                 ps.setDouble(2, montoInicial);
                 ps.executeUpdate();
                 try (ResultSet rs = ps.getGeneratedKeys()) {
@@ -406,12 +412,10 @@ public class AbarrotesPos {
         public double calcularTotalVentasCaja(Caja caja) throws SQLException {
             String sql = "SELECT COALESCE(SUM(ABS(m.Cantidad) * p.PrecioVenta), 0) as Total " +
                 "FROM MovimientosInventario m JOIN Productos p ON m.IdProducto = p.IdProducto " +
-                "WHERE m.TipoMovimiento = 'VENTA' AND m.UsuarioResponsable = ? " +
-                "AND m.FechaMovimiento >= ?";
+                "WHERE m.TipoMovimiento = 'VENTA' AND m.FechaMovimiento >= ?";
             try (Connection conn = ConexionDB.getInstance().getConnection();
                  PreparedStatement ps = conn.prepareStatement(sql)) {
-                ps.setString(1, caja.usuario);
-                ps.setString(2, caja.fechaApertura);
+                ps.setString(1, caja.fechaApertura);
                 try (ResultSet rs = ps.executeQuery()) {
                     if (rs.next()) return rs.getDouble("Total");
                 }
@@ -419,17 +423,18 @@ public class AbarrotesPos {
             return 0.0;
         }
 
-        public void cerrarCaja(int idCaja, double montoFinalEfectivo, double totalVentas) throws SQLException {
+        public void cerrarCaja(int idCaja, double montoFinalEfectivo, double totalVentas, String adminUsername) throws SQLException {
             double diferencia = montoFinalEfectivo - totalVentas;
             String sql = "UPDATE Cajas SET FechaCierre = datetime('now','localtime'), " +
-                "MontoFinalEfectivo = ?, TotalVentasCalculado = ?, Diferencia = ?, Estado = 'CERRADA' " +
+                "UsuarioAdminCierre = ?, MontoFinalEfectivo = ?, TotalVentasCalculado = ?, Diferencia = ?, Estado = 'CERRADA' " +
                 "WHERE Id = ?";
             try (Connection conn = ConexionDB.getInstance().getConnection();
                  PreparedStatement ps = conn.prepareStatement(sql)) {
-                ps.setDouble(1, montoFinalEfectivo);
-                ps.setDouble(2, totalVentas);
-                ps.setDouble(3, diferencia);
-                ps.setInt(4, idCaja);
+                ps.setString(1, adminUsername);
+                ps.setDouble(2, montoFinalEfectivo);
+                ps.setDouble(3, totalVentas);
+                ps.setDouble(4, diferencia);
+                ps.setInt(5, idCaja);
                 ps.executeUpdate();
             }
         }
@@ -438,9 +443,10 @@ public class AbarrotesPos {
             Double montoFinal = rs.getObject("MontoFinalEfectivo") != null ? rs.getDouble("MontoFinalEfectivo") : null;
             Double totalVentas = rs.getObject("TotalVentasCalculado") != null ? rs.getDouble("TotalVentasCalculado") : null;
             Double diferencia = rs.getObject("Diferencia") != null ? rs.getDouble("Diferencia") : null;
-            return new Caja(rs.getInt("Id"), rs.getString("Usuario"), rs.getString("FechaApertura"),
+            String adminCierre = rs.getObject("UsuarioAdminCierre") != null ? rs.getString("UsuarioAdminCierre") : null;
+            return new Caja(rs.getInt("Id"), rs.getString("UsuarioAdminApertura"), rs.getString("FechaApertura"),
                 rs.getDouble("MontoInicial"), rs.getString("FechaCierre"),
-                montoFinal, totalVentas, diferencia, rs.getString("Estado"));
+                adminCierre, montoFinal, totalVentas, diferencia, rs.getString("Estado"));
         }
     }
 
@@ -599,36 +605,42 @@ public class AbarrotesPos {
                 if (u != null) {
                     AbarrotesPos.sesionActual = u;
                     dispose();
-                    if ("CAJERO".equals(u.rol)) {
-                        try {
-                            CajaDAO cajaDAO = new CajaDAO();
-                            Caja cajaAbierta = cajaDAO.obtenerCajaAbierta(u.username);
+                    try {
+                        CajaDAO cajaDAO = new CajaDAO();
+                        Caja cajaAbierta = cajaDAO.obtenerCajaAbiertaGlobal();
+                        AbarrotesPos.cajaActual = cajaAbierta;
+                        if ("ADMIN".equals(u.rol)) {
                             if (cajaAbierta == null) {
-                                String montoStr = JOptionPane.showInputDialog(null,
-                                    "No hay caja abierta para hoy.\nCuál es el monto inicial en caja?\n(Efectivo de inicio de turno)",
-                                    "Apertura de Caja", JOptionPane.QUESTION_MESSAGE);
-                                if (montoStr != null && !montoStr.trim().isEmpty()) {
-                                    try {
-                                        double monto = Double.parseDouble(montoStr.trim());
-                                        cajaAbierta = cajaDAO.abrirCaja(u.username, monto);
-                                        AbarrotesPos.cajaActual = cajaAbierta;
-                                        JOptionPane.showMessageDialog(null, "Caja abierta con $" + String.format("%.2f", monto), "Caja Abierta", JOptionPane.INFORMATION_MESSAGE);
-                                    } catch (NumberFormatException ex) {
-                                        JOptionPane.showMessageDialog(null, "Monto inválido. Se abrirá caja con $0.00");
-                                        cajaAbierta = cajaDAO.abrirCaja(u.username, 0.0);
-                                        AbarrotesPos.cajaActual = cajaAbierta;
+                                int resp = JOptionPane.showConfirmDialog(null,
+                                    "No hay caja global abierta.\n¿Desea abrir la caja ahora?",
+                                    "Apertura de Caja", JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE);
+                                if (resp == JOptionPane.YES_OPTION) {
+                                    String montoStr = JOptionPane.showInputDialog(null,
+                                        "Ingrese el monto inicial de la caja:",
+                                        "Apertura de Caja", JOptionPane.QUESTION_MESSAGE);
+                                    if (montoStr != null && !montoStr.trim().isEmpty()) {
+                                        try {
+                                            double monto = Double.parseDouble(montoStr.trim());
+                                            AbarrotesPos.cajaActual = cajaDAO.abrirCaja(u.username, monto);
+                                            JOptionPane.showMessageDialog(null,
+                                                "Caja global abierta con $" + String.format("%.2f", monto),
+                                                "Caja Abierta", JOptionPane.INFORMATION_MESSAGE);
+                                        } catch (NumberFormatException ex) {
+                                            JOptionPane.showMessageDialog(null, "Monto inválido. No se abrió la caja.");
+                                        }
                                     }
-                                } else {
-                                    cajaAbierta = cajaDAO.abrirCaja(u.username, 0.0);
-                                    AbarrotesPos.cajaActual = cajaAbierta;
                                 }
-                            } else {
-                                AbarrotesPos.cajaActual = cajaAbierta;
                             }
-                        } catch (SQLException ex) {
-                            ex.printStackTrace();
-                            JOptionPane.showMessageDialog(null, "Error al verificar caja: " + ex.getMessage());
+                        } else {
+                            if (cajaAbierta == null) {
+                                JOptionPane.showMessageDialog(null,
+                                    "No hay caja global abierta.\nSolicite al administrador que abra la caja antes de comenzar a vender.",
+                                    "Caja No Disponible", JOptionPane.WARNING_MESSAGE);
+                            }
                         }
+                    } catch (SQLException ex) {
+                        ex.printStackTrace();
+                        JOptionPane.showMessageDialog(null, "Error al verificar caja: " + ex.getMessage());
                     }
                     new MainFrame().setVisible(true);
                 } else {
@@ -734,6 +746,22 @@ public class AbarrotesPos {
             if (isAdmin) addMenu(sidebar, "Dashboard (Inicio)", "DASHBOARD");
             addMenu(sidebar, "Punto de Venta (Alt+V)", "VENTAS");
             if (isAdmin) addMenu(sidebar, "Gestion de Inventario", "INVENTARIO");
+            if (isAdmin) {
+                sidebar.add(Box.createRigidArea(new Dimension(0, 10)));
+                JPanel separador = new JPanel(); separador.setBackground(new Color(55, 65, 81));
+                separador.setMaximumSize(new Dimension(220, 1)); separador.setPreferredSize(new Dimension(220, 1));
+                separador.setAlignmentX(LEFT_ALIGNMENT); separador.setBorder(new EmptyBorder(0, 20, 0, 20));
+                sidebar.add(separador);
+                sidebar.add(Box.createRigidArea(new Dimension(0, 5)));
+                SidebarButton btnAbrirCaja = new SidebarButton("Abrir Caja");
+                btnAbrirCaja.setMaximumSize(new Dimension(260, 50));
+                btnAbrirCaja.addActionListener(e -> abrirCajaAdmin());
+                sidebar.add(btnAbrirCaja);
+                SidebarButton btnCerrarCaja = new SidebarButton("Cerrar Caja (Corte Z)");
+                btnCerrarCaja.setMaximumSize(new Dimension(260, 50));
+                btnCerrarCaja.addActionListener(e -> cerrarCajaAdmin());
+                sidebar.add(btnCerrarCaja);
+            }
             sidebar.add(Box.createVerticalGlue());
             JLabel lblUser = new JLabel("Usuario: " + (sesionActual != null ? sesionActual.username : "N/A"));
             lblUser.setForeground(Color.WHITE); lblUser.setFont(new Font("Segoe UI", Font.BOLD, 14)); lblUser.setBorder(new EmptyBorder(0, 30, 5, 0));
@@ -756,6 +784,65 @@ public class AbarrotesPos {
         private void addMenu(JPanel p, String t, String c) {
             SidebarButton b = new SidebarButton(t); b.addActionListener(e -> cardLayout.show(mainContent, c));
             b.setMaximumSize(new Dimension(260, 50)); p.add(b);
+        }
+
+        private void abrirCajaAdmin() {
+            if (AbarrotesPos.cajaActual != null) {
+                JOptionPane.showMessageDialog(this,
+                    "Ya hay una caja abierta.\nAbierta el: " + AbarrotesPos.cajaActual.fechaApertura + "\nCiérrela primero para abrir una nueva.",
+                    "Caja Ya Abierta", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+            String montoStr = JOptionPane.showInputDialog(this,
+                "Ingrese el monto inicial de la caja:", "Apertura de Caja", JOptionPane.QUESTION_MESSAGE);
+            if (montoStr == null) return;
+            try {
+                double monto = Double.parseDouble(montoStr.trim());
+                CajaDAO cajaDAO = new CajaDAO();
+                AbarrotesPos.cajaActual = cajaDAO.abrirCaja(AbarrotesPos.sesionActual.username, monto);
+                JOptionPane.showMessageDialog(this,
+                    "Caja global abierta con $" + String.format("%.2f", monto),
+                    "Caja Abierta", JOptionPane.INFORMATION_MESSAGE);
+            } catch (NumberFormatException ex) {
+                JOptionPane.showMessageDialog(this, "Monto inválido.", "Error", JOptionPane.ERROR_MESSAGE);
+            } catch (SQLException ex) {
+                JOptionPane.showMessageDialog(this, "Error al abrir caja: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+                ex.printStackTrace();
+            }
+        }
+
+        private void cerrarCajaAdmin() {
+            if (AbarrotesPos.cajaActual == null) {
+                JOptionPane.showMessageDialog(this,
+                    "No hay caja abierta actualmente.",
+                    "Sin Caja Abierta", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+            String efectivoStr = JOptionPane.showInputDialog(this,
+                "Cierre de Caja Global\nAbierta el: " + AbarrotesPos.cajaActual.fechaApertura +
+                "\n\nIngrese el efectivo contado en caja:",
+                "Cierre de Caja (Corte Z)", JOptionPane.QUESTION_MESSAGE);
+            if (efectivoStr == null) return;
+            try {
+                double efectivo = Double.parseDouble(efectivoStr.trim());
+                CajaDAO cajaDAO = new CajaDAO();
+                double totalVentas = cajaDAO.calcularTotalVentasCaja(AbarrotesPos.cajaActual);
+                cajaDAO.cerrarCaja(AbarrotesPos.cajaActual.id, efectivo, totalVentas, AbarrotesPos.sesionActual.username);
+                Caja cajaCerrada = cajaDAO.obtenerCajaPorId(AbarrotesPos.cajaActual.id);
+                AbarrotesPos.cajaActual = null;
+                PdfService.generarCorteCajaPDF(cajaCerrada);
+                JOptionPane.showMessageDialog(this,
+                    "Caja CERRADA exitosamente.\nCorte Z generado en carpeta /Cortes\n\n" +
+                    "Ventas del turno: $" + String.format("%.2f", cajaCerrada.totalVentasCalculado) + "\n" +
+                    "Efectivo contado: $" + String.format("%.2f", cajaCerrada.montoFinalEfectivo) + "\n" +
+                    "Diferencia: $" + String.format("%.2f", cajaCerrada.diferencia),
+                    "Corte Exitoso", JOptionPane.INFORMATION_MESSAGE);
+            } catch (NumberFormatException ex) {
+                JOptionPane.showMessageDialog(this, "Monto inválido.", "Error", JOptionPane.ERROR_MESSAGE);
+            } catch (SQLException ex) {
+                JOptionPane.showMessageDialog(this, "Error al cerrar caja: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+                ex.printStackTrace();
+            }
         }
     }
 
@@ -974,8 +1061,12 @@ public class AbarrotesPos {
         }
 
         private void procesarCobro() {
-            if ("CAJERO".equals(AbarrotesPos.sesionActual != null ? AbarrotesPos.sesionActual.rol : "") && AbarrotesPos.cajaActual == null) {
-                JOptionPane.showMessageDialog(this, "No hay caja abierta. Debe abrir caja antes de cobrar.", "Sin Caja", JOptionPane.WARNING_MESSAGE);
+            if (AbarrotesPos.cajaActual == null) {
+                String msg = "No hay caja global abierta.\n" +
+                    ("ADMIN".equals(AbarrotesPos.sesionActual != null ? AbarrotesPos.sesionActual.rol : "")
+                        ? "Use 'Abrir Caja' en el menú lateral para iniciar operaciones."
+                        : "Solicite al administrador que abra la caja antes de cobrar.");
+                JOptionPane.showMessageDialog(this, msg, "Caja Cerrada", JOptionPane.WARNING_MESSAGE);
                 return;
             }
             if (carrito.isEmpty()) return;
@@ -996,30 +1087,40 @@ public class AbarrotesPos {
         }
 
         private void generarCorteCaja() {
+            if (AbarrotesPos.sesionActual == null || !"ADMIN".equals(AbarrotesPos.sesionActual.rol)) {
+                JOptionPane.showMessageDialog(this,
+                    "Solo el administrador puede cerrar la caja.\nSolicite al administrador que use 'Cerrar Caja (Corte Z)' en el menú lateral.",
+                    "Acceso Restringido", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+            if (AbarrotesPos.cajaActual == null) {
+                JOptionPane.showMessageDialog(this, "No hay caja abierta actualmente.", "Sin Caja Abierta", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
             try {
-                if ("CAJERO".equals(AbarrotesPos.sesionActual.rol) && AbarrotesPos.cajaActual != null) {
-                    String efectivoStr = JOptionPane.showInputDialog(this,
-                        "Corte de Caja - " + AbarrotesPos.sesionActual.username + "\nIngrese el efectivo contado en caja:",
-                        "Cierre de Caja", JOptionPane.QUESTION_MESSAGE);
-                    if (efectivoStr == null) return;
-                    double efectivo;
-                    try { efectivo = Double.parseDouble(efectivoStr.trim()); }
-                    catch (NumberFormatException ex) { JOptionPane.showMessageDialog(this, "Monto inválido."); return; }
+                String efectivoStr = JOptionPane.showInputDialog(this,
+                    "Cierre de Caja Global\nAbierta el: " + AbarrotesPos.cajaActual.fechaApertura +
+                    "\n\nIngrese el efectivo contado en caja:",
+                    "Cierre de Caja (Corte Z)", JOptionPane.QUESTION_MESSAGE);
+                if (efectivoStr == null) return;
+                double efectivo;
+                try { efectivo = Double.parseDouble(efectivoStr.trim()); }
+                catch (NumberFormatException ex) { JOptionPane.showMessageDialog(this, "Monto inválido."); return; }
 
-                    CajaDAO cajaDAO = new CajaDAO();
-                    double totalVentas = cajaDAO.calcularTotalVentasCaja(AbarrotesPos.cajaActual);
-                    cajaDAO.cerrarCaja(AbarrotesPos.cajaActual.id, efectivo, totalVentas);
+                CajaDAO cajaDAO = new CajaDAO();
+                double totalVentas = cajaDAO.calcularTotalVentasCaja(AbarrotesPos.cajaActual);
+                cajaDAO.cerrarCaja(AbarrotesPos.cajaActual.id, efectivo, totalVentas, AbarrotesPos.sesionActual.username);
 
-                    Caja cajaCerrada = cajaDAO.obtenerCajaPorId(AbarrotesPos.cajaActual.id);
-                    AbarrotesPos.cajaActual = null;
+                Caja cajaCerrada = cajaDAO.obtenerCajaPorId(AbarrotesPos.cajaActual.id);
+                AbarrotesPos.cajaActual = null;
 
-                    PdfService.generarCorteCajaPDF(cajaCerrada);
-                    JOptionPane.showMessageDialog(this, "Corte de caja generado en carpeta /Cortes\nCaja CERRADA. Para seguir vendiendo debe abrir una nueva caja.", "Corte Exitoso", JOptionPane.INFORMATION_MESSAGE);
-                } else {
-                    Map<String, Object> stats = productoDAO.obtenerEstadisticasHoy();
-                    PdfService.generarCortePDF(stats);
-                    JOptionPane.showMessageDialog(this, "Corte Generado en carpeta /Cortes");
-                }
+                PdfService.generarCorteCajaPDF(cajaCerrada);
+                JOptionPane.showMessageDialog(this,
+                    "Caja CERRADA exitosamente.\nCorte Z generado en carpeta /Cortes\n\n" +
+                    "Ventas del turno: $" + String.format("%.2f", cajaCerrada.totalVentasCalculado) + "\n" +
+                    "Efectivo contado: $" + String.format("%.2f", cajaCerrada.montoFinalEfectivo) + "\n" +
+                    "Diferencia: $" + String.format("%.2f", cajaCerrada.diferencia),
+                    "Corte Exitoso", JOptionPane.INFORMATION_MESSAGE);
             } catch (Exception e) {
                 JOptionPane.showMessageDialog(this, "Error al generar corte: " + e.getMessage());
                 e.printStackTrace();

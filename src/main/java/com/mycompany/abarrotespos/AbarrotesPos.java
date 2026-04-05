@@ -318,7 +318,7 @@ public class AbarrotesPos {
                 document.add(new Paragraph("\n"));
                 double ventas = (double) stats.getOrDefault("totalVentas", 0.0);
                 int trans = (int) stats.getOrDefault("numTransacciones", 0);
-                document.add(new Paragraph("Resumen del Dia:").setBold());
+                document.add(new Paragraph("Resumen del Día:").setBold());
                 document.add(new Paragraph("Ventas Totales: $" + String.format("%.2f", ventas)));
                 document.add(new Paragraph("Transacciones: " + trans));
                 document.add(new Paragraph("\n\n"));
@@ -464,7 +464,7 @@ public class AbarrotesPos {
     // 7b. FOLIO SERVICE
     // ==========================================
     static class FolioService {
-        public static String generarFolio() throws SQLException {
+        public static synchronized String generarFolio() throws SQLException {
             String fechaHoy = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
             Connection conn = ConexionDB.getInstance().getConnection();
             boolean prevAutoCommit = conn.getAutoCommit();
@@ -504,7 +504,7 @@ public class AbarrotesPos {
     // 7c. VENTA DAO
     // ==========================================
     static class VentaDAO {
-        public Venta registrarVenta(List<DetalleVenta> carrito, double total, String usuarioCajero) throws SQLException {
+        public synchronized Venta registrarVenta(List<DetalleVenta> carrito, double total, String usuarioCajero) throws SQLException {
             String folio = FolioService.generarFolio();
             Connection conn = ConexionDB.getInstance().getConnection();
             boolean prevAutoCommit = conn.getAutoCommit();
@@ -936,7 +936,7 @@ public class AbarrotesPos {
             add(new JLabel("Costo ($):")); add(txtCosto);
             add(new JLabel("Precio Venta ($):")); add(txtPrecio);
             add(new JLabel("Stock Inicial:")); add(txtStock);
-            add(new JLabel("Stock Minimo:")); add(txtStockMin);
+            add(new JLabel("Stock Mínimo:")); add(txtStockMin);
 
             JButton btnGuardar = new JButton("Guardar");
             btnGuardar.setBackground(Config.COLOR_PRIMARY); btnGuardar.setForeground(Color.WHITE);
@@ -1386,7 +1386,7 @@ public class AbarrotesPos {
             JButton btnNuevo = new JButton("Nuevo Producto");
             btnNuevo.setBackground(Config.COLOR_SUCCESS); btnNuevo.setForeground(Color.WHITE);
             btnNuevo.addActionListener(e -> gestionarProducto(null));
-            JButton btnEditar = new JButton("Editar Seleccion");
+            JButton btnEditar = new JButton("Editar Selección");
             btnEditar.setBackground(Config.COLOR_PRIMARY); btnEditar.setForeground(Color.WHITE);
             btnEditar.addActionListener(e -> editarProducto());
             JButton btnEliminar = new JButton("Eliminar");
@@ -1476,7 +1476,7 @@ public class AbarrotesPos {
             btnHoy.setFocusPainted(false);
             btnHoy.addActionListener(e -> cargarVentas(false));
 
-            JButton btn7Dias = new JButton("Ultimos 7 dias");
+            JButton btn7Dias = new JButton("Últimos 7 días");
             btn7Dias.setBackground(Config.COLOR_INFO); btn7Dias.setForeground(Color.WHITE);
             btn7Dias.setFocusPainted(false);
             btn7Dias.addActionListener(e -> cargarVentas(true));

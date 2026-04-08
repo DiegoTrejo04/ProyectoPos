@@ -127,9 +127,9 @@ public class AbarrotesPos {
     // 4. DATABASE INITIALIZER
     // ==========================================
     static class DatabaseInitializer {
-        public static boolean initialize() {
-            try (Connection conn = ConexionDB.getInstance().getConnection();
-                 Statement stmt = conn.createStatement()) {
+        public static boolean initialize() throws SQLException {
+            Connection conn = ConexionDB.getInstance().getConnection();
+            try (Statement stmt = conn.createStatement()) {
 
                 stmt.execute("CREATE TABLE IF NOT EXISTS Categorias (" +
                     "IdCategoria INTEGER PRIMARY KEY AUTOINCREMENT," +
@@ -447,10 +447,10 @@ public class AbarrotesPos {
         public static boolean inicializarTablaUsuarios() {
             return DatabaseInitializer.initialize();
         }
-        public Usuario login(String user, String pass) {
+        public Usuario login(String user, String pass) throws SQLException {
             String sql = "SELECT * FROM Usuarios WHERE Username = ? AND Password = ?";
-            try (Connection conn = ConexionDB.getInstance().getConnection();
-                 PreparedStatement ps = conn.prepareStatement(sql)) {
+            Connection conn = ConexionDB.getInstance().getConnection();
+            try (PreparedStatement ps = conn.prepareStatement(sql)) {
                 ps.setString(1, user); ps.setString(2, pass);
                 try (ResultSet rs = ps.executeQuery()) {
                     if (rs.next()) return new Usuario(rs.getInt("Id"), rs.getString("Username"), rs.getString("Rol"));
@@ -546,8 +546,8 @@ public class AbarrotesPos {
         }
 
         public Venta obtenerVentaPorId(int id) throws SQLException {
-            try (Connection conn = ConexionDB.getInstance().getConnection();
-                 PreparedStatement ps = conn.prepareStatement("SELECT * FROM Ventas WHERE Id = ?")) {
+            Connection conn = ConexionDB.getInstance().getConnection();
+            try (PreparedStatement ps = conn.prepareStatement("SELECT * FROM Ventas WHERE Id = ?")) {
                 ps.setInt(1, id);
                 try (ResultSet rs = ps.executeQuery()) {
                     if (rs.next()) return mapVenta(rs);
@@ -572,8 +572,8 @@ public class AbarrotesPos {
 
         private List<Venta> ejecutarConsultaVentas(String sql, String usuarioCajero) throws SQLException {
             List<Venta> lista = new ArrayList<>();
-            try (Connection conn = ConexionDB.getInstance().getConnection();
-                 PreparedStatement ps = conn.prepareStatement(sql)) {
+            Connection conn = ConexionDB.getInstance().getConnection();
+            try (PreparedStatement ps = conn.prepareStatement(sql)) {
                 if (usuarioCajero != null) ps.setString(1, usuarioCajero);
                 try (ResultSet rs = ps.executeQuery()) {
                     while (rs.next()) lista.add(mapVenta(rs));
@@ -586,8 +586,8 @@ public class AbarrotesPos {
             List<DetalleVentaGuardado> lista = new ArrayList<>();
             String sql = "SELECT vd.*, p.Nombre as ProductoNombre FROM VentaDetalle vd " +
                 "JOIN Productos p ON vd.ProductoId = p.IdProducto WHERE vd.VentaId = ?";
-            try (Connection conn = ConexionDB.getInstance().getConnection();
-                 PreparedStatement ps = conn.prepareStatement(sql)) {
+            Connection conn = ConexionDB.getInstance().getConnection();
+            try (PreparedStatement ps = conn.prepareStatement(sql)) {
                 ps.setInt(1, ventaId);
                 try (ResultSet rs = ps.executeQuery()) {
                     while (rs.next()) {
@@ -610,8 +610,8 @@ public class AbarrotesPos {
     static class CajaDAO {
         public Caja obtenerCajaAbiertaGlobal() throws SQLException {
             String sql = "SELECT * FROM Cajas WHERE Estado = 'ABIERTA' ORDER BY Id DESC LIMIT 1";
-            try (Connection conn = ConexionDB.getInstance().getConnection();
-                 PreparedStatement ps = conn.prepareStatement(sql);
+            Connection conn = ConexionDB.getInstance().getConnection();
+            try (PreparedStatement ps = conn.prepareStatement(sql);
                  ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) return mapCaja(rs);
             }
@@ -623,8 +623,8 @@ public class AbarrotesPos {
                 throw new SQLException("Ya existe una caja abierta. Ciérrela primero.");
             }
             String sql = "INSERT INTO Cajas (UsuarioAdminApertura, MontoInicial, Estado) VALUES (?, ?, 'ABIERTA')";
-            try (Connection conn = ConexionDB.getInstance().getConnection();
-                 PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+            Connection conn = ConexionDB.getInstance().getConnection();
+            try (PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
                 ps.setString(1, adminUsername);
                 ps.setDouble(2, montoInicial);
                 ps.executeUpdate();
@@ -637,8 +637,8 @@ public class AbarrotesPos {
 
         public Caja obtenerCajaPorId(int id) throws SQLException {
             String sql = "SELECT * FROM Cajas WHERE Id = ?";
-            try (Connection conn = ConexionDB.getInstance().getConnection();
-                 PreparedStatement ps = conn.prepareStatement(sql)) {
+            Connection conn = ConexionDB.getInstance().getConnection();
+            try (PreparedStatement ps = conn.prepareStatement(sql)) {
                 ps.setInt(1, id);
                 try (ResultSet rs = ps.executeQuery()) {
                     if (rs.next()) return mapCaja(rs);
@@ -649,8 +649,8 @@ public class AbarrotesPos {
 
         public double calcularTotalVentasCaja(Caja caja) throws SQLException {
             String sql = "SELECT COALESCE(SUM(Total), 0) as Total FROM Ventas WHERE Estado = 'COMPLETADA' AND Fecha >= ?";
-            try (Connection conn = ConexionDB.getInstance().getConnection();
-                 PreparedStatement ps = conn.prepareStatement(sql)) {
+            Connection conn = ConexionDB.getInstance().getConnection();
+            try (PreparedStatement ps = conn.prepareStatement(sql)) {
                 ps.setString(1, caja.fechaApertura);
                 try (ResultSet rs = ps.executeQuery()) {
                     if (rs.next()) return rs.getDouble("Total");
@@ -664,8 +664,8 @@ public class AbarrotesPos {
             String sql = "UPDATE Cajas SET FechaCierre = datetime('now','localtime'), " +
                 "UsuarioAdminCierre = ?, MontoFinalEfectivo = ?, TotalVentasCalculado = ?, Diferencia = ?, Estado = 'CERRADA' " +
                 "WHERE Id = ?";
-            try (Connection conn = ConexionDB.getInstance().getConnection();
-                 PreparedStatement ps = conn.prepareStatement(sql)) {
+            Connection conn = ConexionDB.getInstance().getConnection();
+            try (PreparedStatement ps = conn.prepareStatement(sql)) {
                 ps.setString(1, adminUsername);
                 ps.setDouble(2, montoFinalEfectivo);
                 ps.setDouble(3, totalVentas);
@@ -690,8 +690,8 @@ public class AbarrotesPos {
 
         public List<Categoria> obtenerCategorias() throws SQLException {
             List<Categoria> list = new ArrayList<>();
-            try (Connection conn = ConexionDB.getInstance().getConnection();
-                 Statement stmt = conn.createStatement();
+            Connection conn = ConexionDB.getInstance().getConnection();
+            try (Statement stmt = conn.createStatement();
                  ResultSet rs = stmt.executeQuery("SELECT * FROM Categorias")) {
                 while (rs.next()) list.add(new Categoria(rs.getInt("IdCategoria"), rs.getString("Nombre")));
             }
@@ -702,8 +702,8 @@ public class AbarrotesPos {
             String sql = esNuevo
                 ? "INSERT INTO Productos (CodigoBarras, Nombre, IdCategoria, Costo, PrecioVenta, StockActual, StockMinimo, Activo) VALUES (?,?,?,?,?,?,?,1)"
                 : "UPDATE Productos SET CodigoBarras=?, Nombre=?, IdCategoria=?, Costo=?, PrecioVenta=?, StockActual=?, StockMinimo=? WHERE IdProducto=?";
-            try (Connection conn = ConexionDB.getInstance().getConnection();
-                 PreparedStatement ps = conn.prepareStatement(sql)) {
+            Connection conn = ConexionDB.getInstance().getConnection();
+            try (PreparedStatement ps = conn.prepareStatement(sql)) {
                 ps.setString(1, p.codigoBarras); ps.setString(2, p.nombre); ps.setInt(3, p.idCategoria);
                 ps.setDouble(4, p.costo); ps.setDouble(5, p.precio); ps.setInt(6, p.stock); ps.setInt(7, p.stockMinimo);
                 if (!esNuevo) ps.setInt(8, p.id);
@@ -713,8 +713,8 @@ public class AbarrotesPos {
 
         public void eliminarProducto(int idProducto) throws SQLException {
             String sql = "UPDATE Productos SET Activo = 0 WHERE IdProducto = ?";
-            try (Connection conn = ConexionDB.getInstance().getConnection();
-                 PreparedStatement ps = conn.prepareStatement(sql)) {
+            Connection conn = ConexionDB.getInstance().getConnection();
+            try (PreparedStatement ps = conn.prepareStatement(sql)) {
                 ps.setInt(1, idProducto); ps.executeUpdate();
             }
         }
@@ -722,8 +722,8 @@ public class AbarrotesPos {
         public List<Producto> obtenerTodos() throws SQLException {
             List<Producto> lista = new ArrayList<>();
             String sql = "SELECT p.*, c.Nombre as CatNombre FROM Productos p JOIN Categorias c ON p.IdCategoria = c.IdCategoria WHERE p.Activo=1";
-            try (Connection conn = ConexionDB.getInstance().getConnection();
-                 PreparedStatement ps = conn.prepareStatement(sql);
+            Connection conn = ConexionDB.getInstance().getConnection();
+            try (PreparedStatement ps = conn.prepareStatement(sql);
                  ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) lista.add(mapRow(rs));
             }
@@ -732,8 +732,8 @@ public class AbarrotesPos {
 
         public Producto buscarPorCodigo(String codigo) throws SQLException {
             String sql = "SELECT p.*, c.Nombre as CatNombre FROM Productos p JOIN Categorias c ON p.IdCategoria = c.IdCategoria WHERE p.Activo=1 AND p.CodigoBarras=?";
-            try (Connection conn = ConexionDB.getInstance().getConnection();
-                 PreparedStatement ps = conn.prepareStatement(sql)) {
+            Connection conn = ConexionDB.getInstance().getConnection();
+            try (PreparedStatement ps = conn.prepareStatement(sql)) {
                 ps.setString(1, codigo);
                 try (ResultSet rs = ps.executeQuery()) {
                     if (rs.next()) return mapRow(rs);
@@ -781,24 +781,36 @@ public class AbarrotesPos {
         public Map<String, Object> obtenerEstadisticasHoy() throws SQLException {
             Map<String, Object> stats = new HashMap<>();
             String sqlVentas = "SELECT COALESCE(SUM(Total),0) as TotalVenta, COUNT(*) as Transacciones " +
-                "FROM Ventas WHERE Estado = 'COMPLETADA' AND date(Fecha) = date('now','localtime')";
+                    "FROM Ventas WHERE Estado = 'COMPLETADA' AND date(Fecha) = date('now','localtime')";
             String sqlAlertas = "SELECT COUNT(*) FROM Productos WHERE StockActual <= StockMinimo AND Activo = 1";
-            try (Connection conn = ConexionDB.getInstance().getConnection()) {
-                try (PreparedStatement ps = conn.prepareStatement(sqlVentas); ResultSet rs = ps.executeQuery()) {
-                    if (rs.next()) { stats.put("totalVentas", rs.getDouble("TotalVenta")); stats.put("numTransacciones", rs.getInt("Transacciones")); }
-                }
-                try (PreparedStatement ps = conn.prepareStatement(sqlAlertas); ResultSet rs = ps.executeQuery()) {
-                    if (rs.next()) stats.put("stockBajo", rs.getInt(1));
+
+            Connection conn = ConexionDB.getInstance().getConnection(); // <-- ya NO en try-with-resources
+
+            try (PreparedStatement ps = conn.prepareStatement(sqlVentas);
+                 ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    stats.put("totalVentas", rs.getDouble("TotalVenta"));
+                    stats.put("numTransacciones", rs.getInt("Transacciones"));
                 }
             }
+
+            try (PreparedStatement ps = conn.prepareStatement(sqlAlertas);
+                 ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) stats.put("stockBajo", rs.getInt(1));
+            }
+
             return stats;
         }
 
         public List<Producto> obtenerAlertasStock() throws SQLException {
             List<Producto> lista = new ArrayList<>();
-            String sql = "SELECT p.*, c.Nombre as CatNombre FROM Productos p JOIN Categorias c ON p.IdCategoria = c.IdCategoria WHERE p.Activo=1 AND p.StockActual <= p.StockMinimo ORDER BY p.StockActual ASC";
-            try (Connection conn = ConexionDB.getInstance().getConnection();
-                 PreparedStatement ps = conn.prepareStatement(sql);
+            String sql = "SELECT p.*, c.Nombre as CatNombre FROM Productos p " +
+                    "JOIN Categorias c ON p.IdCategoria = c.IdCategoria " +
+                    "WHERE p.Activo=1 AND p.StockActual <= p.StockMinimo " +
+                    "ORDER BY p.StockActual ASC";
+
+            Connection conn = ConexionDB.getInstance().getConnection();
+            try (PreparedStatement ps = conn.prepareStatement(sql);
                  ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) lista.add(mapRow(rs));
             }
@@ -1329,8 +1341,9 @@ public class AbarrotesPos {
                         carrito.clear(); actualizarTabla(); txtCantidad.setText("1"); txtCodigo.requestFocus();
                     } else JOptionPane.showMessageDialog(this, "Pago insuficiente");
                 } catch (Exception e) {
-                    JOptionPane.showMessageDialog(this, "Error al procesar la venta: " + e.getMessage());
                     e.printStackTrace();
+                    JOptionPane.showMessageDialog(this, "Error al procesar la venta: " + e.getMessage());
+
                 }
             }
         }

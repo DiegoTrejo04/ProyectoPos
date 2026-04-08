@@ -41,10 +41,15 @@ public class AbarrotesPos {
             e.printStackTrace();
         }
         SwingUtilities.invokeLater(() -> {
-            if (DatabaseInitializer.initialize()) {
-                new LoginDialog(null).setVisible(true);
-            } else {
-                JOptionPane.showMessageDialog(null, "Error critico inicializando la base de datos.\nVerifique que la carpeta 'data/' sea accesible.");
+            try {
+                if (DatabaseInitializer.initialize()) {
+                    new LoginDialog(null).setVisible(true);
+                } else {
+                    JOptionPane.showMessageDialog(null, "Error critico inicializando la base de datos.\nVerifique que la carpeta 'data/' sea accesible.");
+                }
+            } catch (SQLException ex) {
+                ex.printStackTrace();
+                JOptionPane.showMessageDialog(null, "Error crítico inicializando la base de datos:\n" + ex.getMessage());
             }
         });
     }
@@ -445,7 +450,12 @@ public class AbarrotesPos {
     // ==========================================
     static class UsuarioDAO {
         public static boolean inicializarTablaUsuarios() {
-            return DatabaseInitializer.initialize();
+            try {
+                return DatabaseInitializer.initialize();
+            } catch (SQLException e) {
+                e.printStackTrace();
+                return false;
+            }
         }
         public Usuario login(String user, String pass) throws SQLException {
             String sql = "SELECT * FROM Usuarios WHERE Username = ? AND Password = ?";
@@ -848,7 +858,14 @@ public class AbarrotesPos {
             btnLogin.setBackground(Config.COLOR_PRIMARY); btnLogin.setForeground(Color.WHITE);
             btnLogin.setFont(Config.FONT_HEADER); btnLogin.setFocusPainted(false);
             btnLogin.addActionListener(e -> {
-                Usuario u = new UsuarioDAO().login(txtUser.getText(), new String(txtPass.getPassword()));
+                Usuario u;
+                try {
+                    u = new UsuarioDAO().login(txtUser.getText(), new String(txtPass.getPassword()));
+                } catch (SQLException ex) {
+                    ex.printStackTrace();
+                    JOptionPane.showMessageDialog(null, "Error de base de datos al iniciar sesión: " + ex.getMessage());
+                    return;
+                }
                 if (u != null) {
                     AbarrotesPos.sesionActual = u;
                     dispose();
@@ -1541,8 +1558,8 @@ public class AbarrotesPos {
             new SwingWorker<List<Venta>, Void>() {
                 protected List<Venta> doInBackground() throws Exception {
                     return ultimos7Dias
-                        ? ventaDAO.obtenerVentasUltimos7Dias(rolKey)
-                        : ventaDAO.obtenerVentasHoy(rolKey);
+                        ? ventaDAO.obtenerVentasUltimos7Dias(isAdmin ? "ADMIN" : usuario)
+                        : ventaDAO.obtenerVentasHoy(isAdmin ? "ADMIN" : usuario);
                 }
                 protected void done() {
                     try {

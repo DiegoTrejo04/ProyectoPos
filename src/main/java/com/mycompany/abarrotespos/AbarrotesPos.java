@@ -136,6 +136,7 @@ public class AbarrotesPos {
             Connection conn = ConexionDB.getInstance().getConnection();
             try (Statement stmt = conn.createStatement()) {
 
+
                 stmt.execute("CREATE TABLE IF NOT EXISTS Categorias (" +
                     "IdCategoria INTEGER PRIMARY KEY AUTOINCREMENT," +
                     "Nombre TEXT NOT NULL UNIQUE)");
@@ -302,8 +303,8 @@ public class AbarrotesPos {
                 document.add(new Paragraph("Estado: " + venta.estado).setTextAlignment(TextAlignment.CENTER).setFontSize(8));
                 document.close();
                 JOptionPane.showMessageDialog(null,
-                    "Ticket PDF generado:\n" + nombreArchivo,
-                    "Ticket Generado", JOptionPane.INFORMATION_MESSAGE);
+                        "Ticket PDF generado:\n" + nombreArchivo,
+                        "Ticket Generado", JOptionPane.INFORMATION_MESSAGE);
                 if (Desktop.isDesktopSupported()) Desktop.getDesktop().open(new File(nombreArchivo));
             } catch (Exception e) {
                 JOptionPane.showMessageDialog(null, "Error generando Ticket PDF: " + e.getMessage());
@@ -750,7 +751,7 @@ public class AbarrotesPos {
                 }
             }
             return null;
-        }
+          }
 
         public void actualizarInventario(int id, int cant, String tipo, String user) throws SQLException {
             Connection conn = null;

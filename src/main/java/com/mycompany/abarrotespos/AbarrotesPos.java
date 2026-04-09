@@ -41,10 +41,15 @@ public class AbarrotesPos {
             e.printStackTrace();
         }
         SwingUtilities.invokeLater(() -> {
-            if (DatabaseInitializer.initialize()) {
-                new LoginDialog(null).setVisible(true);
-            } else {
-                JOptionPane.showMessageDialog(null, "Error critico inicializando la base de datos.\nVerifique que la carpeta 'data/' sea accesible.");
+            try {
+                if (DatabaseInitializer.initialize()) {
+                    new LoginDialog(null).setVisible(true);
+                } else {
+                    JOptionPane.showMessageDialog(null, "Error critico inicializando la base de datos.\nVerifique que la carpeta 'data/' sea accesible.");
+                }
+            } catch (SQLException ex) {
+                ex.printStackTrace();
+                JOptionPane.showMessageDialog(null, "Error crítico inicializando la base de datos:\n" + ex.getMessage());
             }
         });
     }
@@ -130,6 +135,7 @@ public class AbarrotesPos {
         public static boolean initialize() throws SQLException {
             Connection conn = ConexionDB.getInstance().getConnection();
             try (Statement stmt = conn.createStatement()) {
+
 
                 stmt.execute("CREATE TABLE IF NOT EXISTS Categorias (" +
                     "IdCategoria INTEGER PRIMARY KEY AUTOINCREMENT," +
@@ -297,8 +303,8 @@ public class AbarrotesPos {
                 document.add(new Paragraph("Estado: " + venta.estado).setTextAlignment(TextAlignment.CENTER).setFontSize(8));
                 document.close();
                 JOptionPane.showMessageDialog(null,
-                    "Ticket PDF generado:\n" + nombreArchivo,
-                    "Ticket Generado", JOptionPane.INFORMATION_MESSAGE);
+                        "Ticket PDF generado:\n" + nombreArchivo,
+                        "Ticket Generado", JOptionPane.INFORMATION_MESSAGE);
                 if (Desktop.isDesktopSupported()) Desktop.getDesktop().open(new File(nombreArchivo));
             } catch (Exception e) {
                 JOptionPane.showMessageDialog(null, "Error generando Ticket PDF: " + e.getMessage());
@@ -445,7 +451,12 @@ public class AbarrotesPos {
     // ==========================================
     static class UsuarioDAO {
         public static boolean inicializarTablaUsuarios() {
-            return DatabaseInitializer.initialize();
+            try {
+                return DatabaseInitializer.initialize();
+            } catch (SQLException e) {
+                e.printStackTrace();
+                return false;
+            }
         }
         public Usuario login(String user, String pass) throws SQLException {
             String sql = "SELECT * FROM Usuarios WHERE Username = ? AND Password = ?";
@@ -740,7 +751,7 @@ public class AbarrotesPos {
                 }
             }
             return null;
-        }
+          }
 
         public void actualizarInventario(int id, int cant, String tipo, String user) throws SQLException {
             Connection conn = null;
@@ -848,7 +859,14 @@ public class AbarrotesPos {
             btnLogin.setBackground(Config.COLOR_PRIMARY); btnLogin.setForeground(Color.WHITE);
             btnLogin.setFont(Config.FONT_HEADER); btnLogin.setFocusPainted(false);
             btnLogin.addActionListener(e -> {
-                Usuario u = new UsuarioDAO().login(txtUser.getText(), new String(txtPass.getPassword()));
+                Usuario u;
+                try {
+                    u = new UsuarioDAO().login(txtUser.getText(), new String(txtPass.getPassword()));
+                } catch (SQLException ex) {
+                    ex.printStackTrace();
+                    JOptionPane.showMessageDialog(null, "Error de base de datos al iniciar sesión: " + ex.getMessage());
+                    return;
+                }
                 if (u != null) {
                     AbarrotesPos.sesionActual = u;
                     dispose();
@@ -1541,8 +1559,8 @@ public class AbarrotesPos {
             new SwingWorker<List<Venta>, Void>() {
                 protected List<Venta> doInBackground() throws Exception {
                     return ultimos7Dias
-                        ? ventaDAO.obtenerVentasUltimos7Dias(rolKey)
-                        : ventaDAO.obtenerVentasHoy(rolKey);
+                        ? ventaDAO.obtenerVentasUltimos7Dias(isAdmin ? "ADMIN" : usuario)
+                        : ventaDAO.obtenerVentasHoy(isAdmin ? "ADMIN" : usuario);
                 }
                 protected void done() {
                     try {
